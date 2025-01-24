@@ -80,7 +80,7 @@ export default function Home() {
         if (img.lazyLoad) {
           el.setAttribute("loading", "lazy");
         }
-        el.setAttributeNS(...img.attr, `{{ ${JSON.stringify(img.name)} | file_asset_url }}`);
+        el.setAttributeNS(...img.attr, `{{ '${img.name}' | file_asset_url }}`);
       });
       return clonedNode.body.innerHTML;
     },
