@@ -18,12 +18,15 @@ import {
 import { PageDownIcon, ClipboardIcon } from "@shopify/polaris-icons";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import parseDataURL from "data-urls";
+
 const base64ImgSelector = 'img[src^="data:image/"],svg image';
+
 export default function Home() {
   const [copiedActive, setCopiedActive] = useState(false);
   const [code, setCode] = useState("");
   const [dom, setDom] = useState(null);
   const [images, setImages] = useState(null);
+  const [error, setError] = useState(null);
   const onChange = useCallback(
     function (value) {
       setCode(value);
@@ -32,35 +35,43 @@ export default function Home() {
   );
   useEffect(
     function () {
-      const parser = new DOMParser();
-      const dom = parser.parseFromString(code, "text/html");
-      const images = Array.from(dom.querySelectorAll(base64ImgSelector))
-        .map((img, idx) => {
-          let lookups = [
-            [null, "src"],
-            ["http://www.w3.org/1999/xlink", "href"],
-          ];
-          let attr = lookups.find((attr) => img.getAttributeNS(...attr));
-          if (!attr) {
-            return null;
-          }
-          let src = img.getAttributeNS(...attr);
-          if (!src) {
-            return null;
-          }
-          const url = parseDataURL(src);
-          return {
-            id: idx,
-            attr,
-            tag: img.tagName,
-            name: `file-${idx + 1}.${url.mimeType.subtype}`,
-            src,
-            lazyLoad: img.tagName == "IMG",
-          };
-        })
-        .filter(Boolean);
-      setImages(images);
-      setDom(dom);
+      try {
+        setError(null);
+        const parser = new DOMParser();
+        const dom = parser.parseFromString(code, "text/html");
+        const images = Array.from(dom.querySelectorAll(base64ImgSelector))
+          .map((img, idx) => {
+            let lookups = [
+              [null, "src"],
+              ["http://www.w3.org/1999/xlink", "href"],
+            ];
+            let attr = lookups.find((attr) => img.getAttributeNS(...attr));
+            if (!attr) {
+              return null;
+            }
+            let src = img.getAttributeNS(...attr);
+            if (!src) {
+              return null;
+            }
+            const url = parseDataURL(src);
+            if (!url) {
+              return null;
+            }
+            return {
+              id: idx,
+              attr,
+              tag: img.tagName,
+              name: `file-${idx + 1}.${url.mimeType.subtype}`,
+              src,
+              lazyLoad: img.tagName == "IMG",
+            };
+          })
+          .filter(Boolean);
+        setImages(images);
+        setDom(dom);
+      } catch (error) {
+        setError(String(error));
+      }
     },
     [code],
   );
@@ -92,9 +103,9 @@ export default function Home() {
         img.id !== id
           ? img
           : {
-              ...img,
-              lazyLoad: newValue,
-            },
+            ...img,
+            lazyLoad: newValue,
+          },
       ),
     );
   };
@@ -104,9 +115,9 @@ export default function Home() {
         img.id !== id
           ? img
           : {
-              ...img,
-              name: newValue,
-            },
+            ...img,
+            name: newValue,
+          },
       ),
     );
   };
@@ -135,6 +146,7 @@ export default function Home() {
                 multiline={true}
                 maxHeight={`16em`}
                 inputMode="text"
+                error={error}
                 helpText="Extract base64 images and replace data url."
                 autoComplete="text"
               />
